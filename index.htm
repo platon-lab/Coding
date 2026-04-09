@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Platon Games - Lab</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&family=Montserrat:wght@400;700;900&display=swap');
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        body, html {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #0d1117;
+            font-family: 'Montserrat', sans-serif;
+            color: #fff;
+            transition: all 0.3s ease;
+        }
+
+        /* Головний екран */
+        #game-container {
+            width: 100%;
+            height: 100%;
+            background-image: url('Lab.png');
+            background-size: cover;
+            background-position: center;
+            position: relative;
+            display: flex;
+            justify-content: flex-end; /* Панель справа */
+        }
+
+        /* Редактор коду */
+        #editor-panel {
+            width: 45%;
+            min-width: 400px;
+            height: 100%;
+            background: rgba(13, 17, 23, 0.85);
+            backdrop-filter: blur(15px);
+            border-left: 2px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            flex-direction: column;
+            box-shadow: -10px 0 30px rgba(0, 0, 0, 0.5);
+            z-index: 10;
+        }
+
+        .header {
+            padding: 20px 30px;
+            background: rgba(0, 0, 0, 0.4);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        h2 {
+            font-weight: 900;
+            letter-spacing: 2px;
+            background: linear-gradient(90deg, #00C9FF 0%, #92FE9D 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        /* Кнопка */
+        #action-btn {
+            padding: 12px 24px;
+            font-size: 14px;
+            font-weight: 700;
+            font-family: inherit;
+            color: #fff;
+            background: #238636;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 15px rgba(35, 134, 54, 0.4);
+        }
+
+        #action-btn:hover {
+            background: #2ea043;
+            transform: translateY(-2px);
+        }
+
+        #action-btn.danger {
+            background: #da3633;
+            box-shadow: 0 4px 15px rgba(218, 54, 51, 0.4);
+        }
+
+        #action-btn.danger:hover {
+            background: #f85149;
+        }
+
+        /* Код */
+        .code-area {
+            padding: 30px;
+            font-family: 'Fira Code', monospace;
+            font-size: 16px;
+            color: #8b949e;
+            line-height: 1.6;
+            overflow-y: auto;
+            flex-grow: 1;
+        }
+        
+        .code-keyword { color: #ff7b72; }
+        .code-string { color: #a5d6ff; }
+        .code-tag { color: #7ee787; }
+
+        /* Оверлеї (Загрузка, Термінал) */
+        #overlay, #terminal-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            z-index: 50;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+        }
+
+        #overlay h1 {
+            font-size: 48px;
+            margin-bottom: 20px;
+            color: #fff;
+        }
+
+        .spinner {
+            width: 60px;
+            height: 60px;
+            border: 6px solid #333;
+            border-top: 6px solid #00C9FF;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        /* Термінал видалення */
+        #terminal-overlay {
+            justify-content: flex-start;
+            align-items: flex-start;
+            padding: 20px;
+            background: #050505;
+        }
+        
+        #terminal-content {
+            font-family: 'Fira Code', monospace;
+            font-size: 18px;
+            color: #ff3333;
+            text-align: left;
+            width: 100%;
+        }
+
+        .log-line { margin-bottom: 5px; }
+
+        /* Відеоплеєр */
+        #media-player {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: 100;
+            display: none;
+            background: #000;
+        }
+
+        /* Ефект тряски і червоного екрану */
+        .shake-red {
+            animation: shake 0.4s infinite;
+            box-shadow: inset 0 0 150px rgba(255, 0, 0, 0.9);
+        }
+
+        .shake-red::after {
+            content: "";
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(255, 0, 0, 0.4);
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        @keyframes shake {
+            0% { transform: translate(2px, 1px) rotate(0deg); }
+            10% { transform: translate(-1px, -2px) rotate(-1deg); }
+            20% { transform: translate(-3px, 0px) rotate(1deg); }
+            30% { transform: translate(0px, 2px) rotate(0deg); }
+            40% { transform: translate(1px, -1px) rotate(1deg); }
+            50% { transform: translate(-1px, 2px) rotate(-1deg); }
+            60% { transform: translate(-3px, 1px) rotate(0deg); }
+            70% { transform: translate(2px, 1px) rotate(-1deg); }
+            80% { transform: translate(-1px, -1px) rotate(1deg); }
+            90% { transform: translate(2px, 2px) rotate(0deg); }
+            100% { transform: translate(1px, -2px) rotate(-1deg); }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="game-container">
+        <div id="editor-panel">
+            <div class="header">
+                <h2>Platon Games</h2>
+                <button id="action-btn">Додати рекламу</button>
+            </div>
+            <div class="code-area">
+<pre><code><span class="code-tag">&lt;!DOCTYPE html&gt;</span>
+<span class="code-tag">&lt;html&gt;</span>
+<span class="code-tag">&lt;head&gt;</span>
+    <span class="code-tag">&lt;title&gt;</span><span class="code-string">Test Build 0.0.1</span><span class="code-tag">&lt;/title&gt;</span>
+<span class="code-tag">&lt;/head&gt;</span>
+<span class="code-tag">&lt;body&gt;</span>
+    <span class="code-tag">&lt;div</span> class=<span class="code-string">"main-wrapper"</span><span class="code-tag">&gt;</span>
+        <span class="code-tag">&lt;img</span> src=
+        <span class="code-keyword">function</span> initGame() {
+            <span class="code-keyword">let</span> status = <span class="code-keyword">undefined</span>;
+            <span class="code-keyword">if</span> (!status) {
+                console.error(<span class="code-string">"FATAL ERROR: UI not found"</span>);
+                <span class="code-keyword">return null</span>;
+            }
+        
+    <span class="code-tag">&lt;/div&gt;</span>
+    
+    <span class="code-tag">&lt;script&gt;</span>
+        <span class="code-keyword">const</span> platonEngine = <span class="code-keyword">new</span> Engine();
+        platonEngine.load({
+            assets: [
+                <span class="code-string">'broken_mesh.obj'</span>,
+                <span class="code-string">'null_texture.png'</span>
+            ]
+        });
+        
+        <span class="code-comment">// TODO: Fix memory leak here</span>
+        <span class="code-keyword">while</span>(<span class="code-keyword">true</span>) {
+            allocate(1024);
+        }
+    <span class="code-tag">&lt;/script&gt;</span>
+<span class="code-tag">&lt;/body&gt;</span>
+<span class="code-tag">&lt;/html&gt;</span></code></pre>
+            </div>
+        </div>
+
+        <div id="overlay">
+            <h1 id="loading-text">Завантаження...</h1>
+            <div class="spinner"></div>
+        </div>
+
+        <div id="terminal-overlay">
+            <div id="terminal-content"></div>
+        </div>
+
+        <video id="media-player" playsinline></video>
+        <audio id="audio-player"></audio>
+    </div>
+
+    <script>
+        const btn = document.getElementById('action-btn');
+        const overlay = document.getElementById('overlay');
+        const terminalOverlay = document.getElementById('terminal-overlay');
+        const terminalContent = document.getElementById('terminal-content');
+        const loadingText = document.getElementById('loading-text');
+        const mediaPlayer = document.getElementById('media-player');
+        const audioPlayer = document.getElementById('audio-player');
+        const gameContainer = document.getElementById('game-container');
+
+        let isAdPhase = true;
+
+        // Фрази для повільного видалення (з озвучкою)
+        const slowDeletePhrases = [
+            "Удаление IP адреса сайта...",
+            "Удаление кода сайта...",
+            "Удаление базы данных пользователей...",
+            "Стирание резервных копий сервера...",
+            "Уничтожение исходных файлов..."
+        ];
+
+        // Фрази для швидкого видалення
+        const fastDeletePhrases = [
+            "Форматирование диска C...", "Удаление системного реестра...", "Сброс прав администратора...", 
+            "Удаление Platon Games...", "Очистка кэша...", "Отключение защиты...", "Удаление firewall...",
+            "Стирание логов...", "Уничтожение протоколов...", "Удаление интерфейса..."
+        ];
+
+        btn.addEventListener('click', () => {
+            if (isAdPhase) {
+                startAdSequence();
+            } else {
+                startDeleteSequence();
+            }
+        });
+
+        function startAdSequence() {
+            // 1. Початок лагів і загрузки
+            overlay.style.display = 'flex';
+            
+            setTimeout(() => { loadingText.innerText = "реклама через 3.."; }, 1500);
+            setTimeout(() => { loadingText.innerText = "реклама через 2.."; }, 2500);
+            setTimeout(() => { loadingText.innerText = "реклама через 1.."; }, 3500);
+            
+            setTimeout(() => {
+                // 2. Включаємо відео Ad.mp4
+                overlay.style.display = 'none';
+                mediaPlayer.src = 'Ad.mp4';
+                mediaPlayer.style.display = 'block';
+                mediaPlayer.play().catch(e => console.log("Необхідна взаємодія для автовідтворення", e));
+
+                // Заборона пропуску (відео на весь екран, без контролів)
+                mediaPlayer.onended = () => {
+                    mediaPlayer.style.display = 'none';
+                    // 3. Червоний трясучий екран + Ad.mp3
+                    gameContainer.classList.add('shake-red');
+                    audioPlayer.src = 'Ad.mp3';
+                    audioPlayer.play();
+
+                    audioPlayer.onended = () => {
+                        // 4. Повернення в меню, зміна кнопки
+                        gameContainer.classList.remove('shake-red');
+                        isAdPhase = false;
+                        btn.innerText = "Видалити сайт";
+                        btn.classList.add('danger');
+                    };
+                };
+            }, 4500);
+        }
+
+        function speakRussianText(text, callback) {
+            window.speechSynthesis.cancel(); // зупинити попередню озвучку якщо є
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'ru-RU';
+            utterance.rate = 1.1;
+            utterance.pitch = 0.9;
+            utterance.onend = callback;
+            window.speechSynthesis.speak(utterance);
+        }
+
+        function startDeleteSequence() {
+            terminalOverlay.style.display = 'flex';
+            terminalContent.innerHTML = '';
+            
+            let slowIndex = 0;
+
+            function nextSlowLine() {
+                if (slowIndex < slowDeletePhrases.length) {
+                    const phrase = slowDeletePhrases[slowIndex];
+                    const div = document.createElement('div');
+                    div.className = 'log-line';
+                    div.innerText = `> ${phrase}`;
+                    terminalContent.appendChild(div);
+                    
+                    speakRussianText(phrase, () => {
+                        slowIndex++;
+                        setTimeout(nextSlowLine, 500); // невелика пауза між фразами
+                    });
+                } else {
+                    // Перехід до швидкого видалення
+                    startFastDeletion();
+                }
+            }
+
+            nextSlowLine();
+        }
+
+        function startFastDeletion() {
+            window.speechSynthesis.cancel(); // Вирубаємо TTS
+            
+            audioPlayer.src = 'Delete.mp3';
+            audioPlayer.play();
+
+            // Швидко генеруємо кучу тексту
+            let fastInterval = setInterval(() => {
+                const randomPhrase = fastDeletePhrases[Math.floor(Math.random() * fastDeletePhrases.length)];
+                const div = document.createElement('div');
+                div.className = 'log-line';
+                div.innerText = `[ERROR] ${randomPhrase} [FAILED/DELETED] - ${Math.random().toString(36).substring(7)}`;
+                terminalContent.appendChild(div);
+                
+                // Автоскрол вниз
+                terminalOverlay.scrollTop = terminalOverlay.scrollHeight;
+            }, 50); // кожні 50мс новий рядок
+
+            audioPlayer.onended = () => {
+                clearInterval(fastInterval);
+                terminalOverlay.style.display = 'none';
+                
+                // Фінальне відео
+                mediaPlayer.src = 'End.mp4';
+                mediaPlayer.style.display = 'block';
+                mediaPlayer.play();
+
+                mediaPlayer.onended = () => {
+                    // Редірект
+                    window.location.href = 'https://platon-lab.github.io/BYE/';
+                };
+            };
+        }
+    </script>
+</body>
+</html>
